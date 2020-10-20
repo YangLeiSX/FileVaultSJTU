@@ -1,5 +1,5 @@
 /*
-** This is the CUI program for safe clients.
+** This is the CUI program for fvault clients.
 */
 
 #include <sys/un.h>
@@ -11,8 +11,8 @@
 #include <string.h>
 #include <pwd.h>
 
-#define SERVER_PATH "/tmp/safe.socket"
-#define CLIENT_PATH "/tmp/safe.%u.socket"
+#define SERVER_PATH "/tmp/fvault.socket"
+#define CLIENT_PATH "/tmp/fvault.%u.socket"
 
 /*
 ** request to server
@@ -202,7 +202,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
 }
 
 void usage(void) {
-    printf("%s\n", "Usage: safe [OPTION]... [FILE]...\n\n"
+    printf("%s\n", "Usage: fvault [OPTION]... [FILE]...\n\n"
            "  -l (list)	list all files under protection\n"
            "  -c (check)	check whether file is under protection;\n"
            "  		for root check owner of given file\n"
@@ -219,7 +219,7 @@ int main(int argc, char ** argv) {
     unsigned long inode = 0;
     struct stat file_stat;
     // 检查参数，如果一个连字符后面多个选项，只识别最后一个
-    // 例如：safe -cl等价于safe -l
+    // 例如：fvault -cl等价于fvault -l
     while ((ch = getopt(argc, argv, "lcid")) != -1) {
         switch (ch) {
         case 'l':
@@ -240,9 +240,9 @@ int main(int argc, char ** argv) {
         }
     }
     // 如果是cid但是没有文件名，就会触发(argc < 3 && option > 1)
-    // 例如：safe -i
+    // 例如：fvault -i
     // 如果是输入了lcid中一个以上，就会触发optind != 2
-    // 例如：safe -c -l
+    // 例如：fvault -c -l
     if (optind != 2 || (argc < 3 && option > 1)) {
         usage();
         return -1;
@@ -253,7 +253,7 @@ int main(int argc, char ** argv) {
         return 0;
     }
 	// 对于cid的情况依次处理每个文件
-	// 例如：safe -i file1.txt file2.txt ...
+	// 例如：fvault -i file1.txt file2.txt ...
     while (optind < argc) {
         if (! stat(argv[optind++], &file_stat)) {
 			// 获得文件的inode节点号去处理

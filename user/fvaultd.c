@@ -15,24 +15,24 @@
 #include "ncheck.c"
 
 // 创建数据库表
-#define CREATE "CREATE TABLE IF NOT EXISTS safe"\
+#define CREATE "CREATE TABLE IF NOT EXISTS fvault"\
 			"("									\
 				"inode INTEGER PRIMARY KEY,"	\
 				"owner INTEGER"					\
 			")"
 // 通过用户uid查找文件
-#define SELECT1 "SELECT inode FROM safe WHERE owner = %u"
-#define SELECT1_ROOT "SELECT inode, owner FROM safe"
+#define SELECT1 "SELECT inode FROM fvault WHERE owner = %u"
+#define SELECT1_ROOT "SELECT inode, owner FROM fvault"
 // 通过文件inode查找用户
-#define SELECT2 "SELECT owner FROM safe WHERE inode = %lu LIMIT 1"
-#define SELECT_CHECK "SELECT 1 FROM safe WHERE inode = %lu LIMIT 1"
+#define SELECT2 "SELECT owner FROM fvault WHERE inode = %lu LIMIT 1"
+#define SELECT_CHECK "SELECT 1 FROM fvault WHERE inode = %lu LIMIT 1"
 // 插入数据
-#define INSERT "INSERT INTO safe VALUES (%lu, %u)"
+#define INSERT "INSERT INTO fvault VALUES (%lu, %u)"
 // 删除数据
-#define DELETE "DELETE FROM safe WHERE inode = %lu"
+#define DELETE "DELETE FROM fvault WHERE inode = %lu"
 
 // 服务器使用的socket路径
-#define SOCK_PATH "/tmp/safe.socket"
+#define SOCK_PATH "/tmp/fvault.socket"
 // 指定netlink协议，系统预定义了17种，这里定义新的类型
 #define NETLINK_SAFE 30
 
@@ -235,7 +235,7 @@ int main(int argc, char ** argv) {
     ucred_len = sizeof(struct ucred);
 
 	// 连接数据库
-    rc = sqlite3_open("safe.db", & db);
+    rc = sqlite3_open("fvault.db", & db);
     if (rc) {
         printf("%s\n", "SQLITE OPEN ERROR");
         sqlite3_close(db);

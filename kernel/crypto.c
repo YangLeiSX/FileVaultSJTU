@@ -1,5 +1,7 @@
 #include <crypto/hash.h>
 #include <crypto/skcipher.h>
+#include <linux/cred.h>
+#include <linux/scatterlist.h>
 
 static void generate_key(unsigned char* key) {
     struct shash_desc sdesc;

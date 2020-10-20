@@ -157,7 +157,7 @@ asmlinkage ssize_t hooked_read(struct pt_regs* regs) {
         ret = old_read(regs);
         // 文件内容读取后保存在rsi中
         // pos为读取文件的偏移量
-        transform((char*)regs->si, ino, pos, ret);
+        // transform((char*)regs->si, ino, pos, ret);
         break;
     case 0:
         ;
@@ -185,9 +185,9 @@ asmlinkage ssize_t hooked_write(struct pt_regs* regs) {
         break;
     case 1:
         // 找到上次读写的位置
-        pos = get_pos_from_fd(regs->di, 1);
+        // pos = get_pos_from_fd(regs->di, 1);
         // 读取rdi加密后写入ino+pos，写入的数量存在rdx中
-        transform((char*)regs->si, ino, pos, regs->dx);
+        // transform((char*)regs->si, ino, pos, regs->dx);
         ret = old_write(regs);
         break;
     case 0:
@@ -231,7 +231,10 @@ asmlinkage ssize_t hooked_rename(struct pt_regs* regs) {
     unsigned long ino;
     ssize_t ret = -1;
 
-    // FIXME: 这里的rsi确定没写错么？
+    // Magic! Do not Modify!
+    // Test 'mv' Command:
+    //   使用rdi(oldname)，不管是本用户还是其他用户都是not permitted
+    //   使用rsi(newname)，本用户可以正常修改，其他用户无法修改
     ino = get_ino_from_name(AT_FDCWD, (char*)regs->si);
     if (check_protection(ino)) {
         ret = old_rename(regs);
@@ -279,38 +282,44 @@ asmlinkage ssize_t hooked_unlinkat(struct pt_regs* regs) {
 asmlinkage ssize_t hooked_getdents64(struct pt_regs* regs) {
     uid_t uid;
     ssize_t ret = -1;
-    unsigned long bpos;
-    struct linux_dirent64* d;
-    
+    int copylen = 0;
+    struct linux_dirent64 *filtered_dirent;
+    struct linux_dirent64 *orig_dirent;
+    struct linux_dirent64 *td1;
+    struct linux_dirent64 *td2;
+
     uid = current_uid().val;
     ret = old_getdents64(regs);
-    /*
-    ** Iterate over linux_dirent64 structs to hide unprivileged files.
-    */
-    /*
-    ** There is a weird bug in this implentation, which I'll review later.
-    */
-    /* for (bpos = 0; bpos < ret; )
-    {
-    	if (! check_privilege(d -> d_ino, uid))
-    	{
-    		ret -= d -> d_reclen;
-    		memcpy(d, (void *)d + d -> d_reclen, ret - bpos);
-    	}
-    	else
-    	{
-    		bpos += d -> d_reclen;
-    	}
-    } */
-    for (bpos = 0; bpos < ret; bpos += d->d_reclen) {
-        d = (struct linux_dirent64*)(regs->si + bpos);
-        if (!check_privilege(d->d_ino, uid)) {
-            d->d_ino = 0;
-            memset(d->d_name, 0, d->d_reclen - 20);
+
+    // empty Directory 
+    if (ret == 0) return ret;
+
+    // allocate memory space
+    filtered_dirent = (struct linux_dirent64*)kmalloc(ret, GFP_KERNEL);
+    td1 = filtered_dirent;
+    orig_dirent = (struct linux_dirent64*)kmalloc(ret, GFP_KERNEL);
+    td2 = orig_dirent;
+    // get directory entries
+    copy_from_user(orig_dirent, (void *)regs->si, ret);
+
+    // iterate directory entries
+    while (ret > 0) {
+        ret -= td2->d_reclen;
+        if (check_privilege(td2->d_ino, uid)) {
+            // select an entry
+            memmove(td1, (char *)td2, td2->d_reclen);
+            td1 = (struct linux_dirent64*)((char *)td1 + td2->d_reclen);
+            copylen += td2->d_reclen;
         }
+        td2 = (struct linux_dirent64*)((char *)td2 + td2->d_reclen);
     }
 
-    return ret;
+    copy_to_user((void *)regs->si, filtered_dirent, copylen);
+    // free kernel memory
+    kfree(orig_dirent);
+    kfree(filtered_dirent);
+
+    return copylen;
 }
 
 /*

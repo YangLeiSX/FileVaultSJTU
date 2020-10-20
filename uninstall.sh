@@ -5,5 +5,31 @@ if [ "$EUID" -ne 0 ]
 	exit
 fi
 
-echo "Uninstalling ..." && \
-rmmod safe
+echo "Uninstalling ..."
+
+echo "Remove kernel module..."
+if [ $(lsmod | grep fvault | wc -w) -ne 0 ]
+then
+	rmmod fvault
+fi
+
+echo "Stop daemon process..."
+if [ $(ps -a | grep fvaultd | wc -w) -ne 0 ]
+then 
+	pkill -f fvaultd
+
+fi
+
+if [ -e "/usr/bin/fvault" ]
+then
+	rm /usr/bin/fvault
+fi
+
+if [ -e "fvault.db" ]
+then
+	rm fvault.db
+fi
+
+rm /tmp/*.socket
+make -C kernel clean
+echo "DONE"
