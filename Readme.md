@@ -16,7 +16,8 @@
 
 ## 现存问题
 
-1. 文件加解密的操作仍需完善（使用kmalloc结合copy_from_user/copy_to_user）
+1. (fixed by modity kernel/crypto.c)文件加解密的操作仍需完善（使用kmalloc结合copy_from_user/copy_to_user）
 2. 文件加入和移除保险箱时的加解密操作
 3. 删除文件后数据库内保存的文件名信息出错
-4. 可执行文件加入保险箱后是否可以正常运行
+4. (tested but not for sure)可执行文件加入保险箱后是否可以正常运行
+5. filename of inode have been changed by "gedit", seems like problem #3 above

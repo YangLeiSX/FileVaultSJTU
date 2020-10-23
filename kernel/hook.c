@@ -235,7 +235,7 @@ asmlinkage ssize_t hooked_rename(struct pt_regs* regs) {
     // Test 'mv' Command:
     //   使用rdi(oldname)，不管是本用户还是其他用户都是not permitted
     //   使用rsi(newname)，本用户可以正常修改，其他用户无法修改
-    ino = get_ino_from_name(AT_FDCWD, (char*)regs->si);
+    ino = get_ino_from_name(AT_FDCWD, (char*)regs->di);
     if (check_protection(ino)) {
         ret = old_rename(regs);
     }
