@@ -60,7 +60,7 @@ static uid_t get_owner(unsigned long inode) {
     if (down_timeout(&rspbuf.sem[seq], 3 * HZ)) {
         if (__ratelimit(&rs)) {
             pid = 0;
-            printk(KERN_NOTICE "[safe] Safe terminated!\n");
+            printk(KERN_NOTICE "[fvault] fvault terminated!\n");
         }
         return 0;
     }
@@ -83,7 +83,7 @@ static void nl_receive_callback(struct sk_buff* skb) {
         // 接收到了ready signal
         // 提取服务器进程的pid
         if (NETLINK_CREDS(skb)->pid == nlh->nlmsg_pid && !NETLINK_CREDS(skb)->uid.val) {
-            printk(KERN_NOTICE "[safe] Safe initiated!\n");
+            printk(KERN_NOTICE "[fvault] fvault initiated!\n");
             pid = nlh->nlmsg_pid;
         }
     }

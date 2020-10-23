@@ -4,23 +4,6 @@
 #include <linux/scatterlist.h>
 
 /**
- * 这里使用到的shash_desc结构体定义如下：
- * 其中的tfm成员表示一次shash操作，
- * crypto_shash中的base成员为一次crypto加解密的基本结构
- * 
-    struct crypto_shash {
-        unsigned int descsize;
-        struct crypto_tfm base;
-    };
-    struct shash_desc {
-        struct crypto_shash *tfm;
-        u32 flags;
-
-        void *__ctx[] CRYPTO_MINALIGN_ATTR;
-    };
-*/
-
-/**
  * @brief 通过用户的uid创建密钥
  * 
  * @param key 长度为256bit的密钥首地址
@@ -49,8 +32,8 @@ static void generate_key(unsigned char* key) {
  * @param iv 长度为128bit的初始化向量iv首地址
  * @param inode 访问文件的inode编号
  * @param offset 访问文件的偏移量
- *  loff_t类型定义为__kernel_loff_t
- *  在5.18.0中定义为long long，长度64bit
+ * loff_t类型定义为__kernel_loff_t
+ * 在5.18.0中定义为long long，长度64bit
  */
 static void generate_iv(char* iv, unsigned long inode, loff_t offset) {
     struct shash_desc sdesc;
@@ -75,12 +58,12 @@ static void generate_iv(char* iv, unsigned long inode, loff_t offset) {
  * 原作者注释：
  * For the purpose of read/write random access, we choose AES CTR mode to transform plain/cipher.
  * The key is generated from owner uid, the iv is generated from file inode and read/write position.
- * @param buf 读写缓冲区的首地址，位于用户空间
+ * @param ubuf 读写缓冲区的首地址，位于用户空间
  * @param inode 文件的inode节点
  * @param offset 读写文件的位置/偏移量
  * @param count 实际发生读写的字节数
  */
-static void transform(char* buf, unsigned long inode, loff_t offset, size_t count) {
+static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t count) {
     struct crypto_skcipher* skcipher = NULL;
     struct skcipher_request* req = NULL;
     struct scatterlist sg;
@@ -92,7 +75,10 @@ static void transform(char* buf, unsigned long inode, loff_t offset, size_t coun
     // 因此需要额外处理，将上一分段读取出来
     short pre_len = offset & 0xf;
     char prefix[15] = { 0 };
-
+    // 
+    char* buf;
+    buf = (char*)kmalloc(count + pre_len, GFP_KERNEL);
+    copy_from_user(buf + pre_len, (void *)ubuf, count);
 
     // 为算法申请内核中运算的上下文
     // 在crypto_alg_list链表中查询，找到AES的CTR模式并注册
@@ -111,7 +97,6 @@ static void transform(char* buf, unsigned long inode, loff_t offset, size_t coun
     // 在内存空间中开辟并维护一段内存
     // scatterlist用于维护大段的被多个组件访问的内存（例如，CPU和DMA）
     // 根据位于上一分段的字节数扩展需要的内存
-    buf -= pre_len;
     sg_init_one(&sg, buf, count + pre_len);
 
     // 将待加密数据放入本次运算的请求空间
@@ -121,14 +106,12 @@ static void transform(char* buf, unsigned long inode, loff_t offset, size_t coun
     
     // 开始加密
     // 将位于上一分段的数据保护在prefix中，防止被二次加密
-    // TODO(xie):问题出现在这里
-    // 一方面memset无法对与buf直接使用
-    // 另一方面位于scatterlist的数据是否写回到buf中
     memcpy(prefix, buf, pre_len);
     crypto_skcipher_encrypt(req);
     memcpy(buf, prefix, pre_len);
-    buf += pre_len;
-
+    
+    copy_to_user((void *)ubuf, buf + pre_len, count);
+    kfree(buf);
     // 清空本次处理的内存，释放空间
     skcipher_request_free(req);
     crypto_free_skcipher(skcipher);

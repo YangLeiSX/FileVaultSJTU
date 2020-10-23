@@ -7,17 +7,17 @@ fi
 
 echo "Uninstalling ..."
 
-echo "Remove kernel module..."
-if [ $(lsmod | grep fvault | wc -w) -ne 0 ]
-then
-	rmmod fvault
-fi
-
 echo "Stop daemon process..."
 if [ $(ps -a | grep fvaultd | wc -w) -ne 0 ]
 then 
 	pkill -f fvaultd
 
+fi
+
+echo "Remove kernel module..."
+if [ $(lsmod | grep fvault | wc -w) -ne 0 ]
+then
+	rmmod fvault
 fi
 
 if [ -e "/usr/bin/fvault" ]
