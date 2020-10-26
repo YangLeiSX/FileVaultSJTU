@@ -211,6 +211,7 @@ asmlinkage ssize_t hooked_read(struct pt_regs* regs) {
         ret = old_read(regs);
         break;
     case 1:
+        pr_info("read %ld\n",ino);
         // 读取文件pos为读取文件的偏移量
         // 文件内容读取后保存在rsi中
         pos = get_pos_from_fd(regs->di, 0);
@@ -250,6 +251,7 @@ asmlinkage ssize_t hooked_write(struct pt_regs* regs) {
         ret = old_write(regs);
         break;
     case 1:
+        pr_info("write %ld\n", ino);
         // 找到上次读写的位置
         pos = get_pos_from_fd(regs->di, 1);
         // 读取rdi加密后写入，写入的字节数存在rdx中
