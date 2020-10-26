@@ -5,7 +5,7 @@
 
 /**
  * @brief 通过用户的uid创建密钥
- * 
+ *
  * @param key 长度为256bit的密钥首地址
  */
 static void generate_key(unsigned char* key) {
@@ -28,7 +28,7 @@ static void generate_key(unsigned char* key) {
 
 /**
  * @brief 通过访问文件的Inode值和偏移量创建初始化向量iv
- * 
+ *
  * @param iv 长度为128bit的初始化向量iv首地址
  * @param inode 访问文件的inode编号
  * @param offset 访问文件的偏移量
@@ -54,7 +54,7 @@ static void generate_iv(char* iv, unsigned long inode, loff_t offset) {
  * @brief 使用AES算法的CTR模式对于文件读写过程中的缓冲区加解密。
  * 具体的加解密过程为使用密钥对自增算子加密，之后与明文异或得到密文。
  * 密钥使用用户的uid生成，初始化向量iv使用文件的inode和读写位置生成
- * 
+ *
  * 原作者注释：
  * For the purpose of read/write random access, we choose AES CTR mode to transform plain/cipher.
  * The key is generated from owner uid, the iv is generated from file inode and read/write position.
@@ -76,7 +76,7 @@ static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t cou
     // 因此需要额外处理，将上一分段读取出来
     short pre_len = offset & 0xf;
     char prefix[15] = { 0 };
-    // 
+    //
     char* buf;
     buf = (char*)kmalloc(count + pre_len, GFP_KERNEL);
     copy_from_user(buf + pre_len, (void *)ubuf, count);
@@ -88,7 +88,7 @@ static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t cou
     // 在该上下文空间中申请数据处理请求
     // 实际上完成了后台的内存申请和绑定
     req = skcipher_request_alloc(skcipher, GFP_KERNEL);
-    
+
     // 创建256bit的密钥，并写入本次运算的上下文内存中
     generate_key(key);
     crypto_skcipher_setkey(skcipher, key, 32);
@@ -104,13 +104,13 @@ static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t cou
     // 第二/三参数分别表示source和destination
     // 第四/五参数为待加密数据的长度和初始化向量
     skcipher_request_set_crypt(req, &sg, &sg, count + pre_len, ivdata);
-    
+
     // 开始加密
     // 将位于上一分段的数据保护在prefix中，防止被二次加密
     memcpy(prefix, buf, pre_len);
     crypto_skcipher_encrypt(req);
     memcpy(buf, prefix, pre_len);
-    
+
     copy_to_user((void *)ubuf, buf + pre_len, count);
     kfree(buf);
     // 清空本次处理的内存，释放空间

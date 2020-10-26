@@ -60,8 +60,8 @@ struct rsp1 {
 */
 void handle(unsigned char op, unsigned long ino) {	//main process
     int client_sock, rc, sockaddr_len;
-	// 这里使用的是sockaddr_un表示Unix域套接字地址
-	// 通常在internet传输中使用sockaddr_in表示互联网域地址
+    // 这里使用的是sockaddr_un表示Unix域套接字地址
+    // 通常在internet传输中使用sockaddr_in表示互联网域地址
     struct sockaddr_un server_sockaddr, client_sockaddr;
     struct req reqbuf = {op, ino};
     union rsp rspbuf;
@@ -69,19 +69,19 @@ void handle(unsigned char op, unsigned long ino) {	//main process
     // 查看用户名和密码的结构
     struct passwd * pwd;
 
-	// 清空socket地址
+    // 清空socket地址
     sockaddr_len = sizeof(struct sockaddr_un);
     memset(& server_sockaddr, 0, sockaddr_len);
     memset(& client_sockaddr, 0, sockaddr_len);
 
-	// 创建Unix域的socket
+    // 创建Unix域的socket
     client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (client_sock == -1) {
         printf("%s\n", "SOCKET ERROR");
         exit(1);
     }
 
-	// 创建客户端socket文件并绑定到套接字
+    // 创建客户端socket文件并绑定到套接字
     client_sockaddr.sun_family = AF_UNIX;
     snprintf(client_sockaddr.sun_path, 107, CLIENT_PATH, getuid());
     unlink(client_sockaddr.sun_path); // 防止上次使用忘记删除
@@ -125,10 +125,10 @@ void handle(unsigned char op, unsigned long ino) {	//main process
 
     // 处理结果
     switch (op) {
-    case 1:		
+    case 1:
         //get file list
         printf("%s\n", "FILE LIST:");
-        if (getuid()) {	
+        if (getuid()) {
             // not root, get specific user's file
             // 如何传递uid信息呢？（破案了，使用getsockopt函数）
             printf("%s\n", "filename");
@@ -136,7 +136,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
                 printf("%s\n",rsp1buf.filename);
                 rc = recv(client_sock, & rsp1buf, sizeof(struct rsp1), 0);
             }
-        } else {	
+        } else {
             // root, get all users' file
             // 管理员用户可以查看所有的文件信息
             printf("%s\t%s\n", "owner", "filename");
@@ -149,7 +149,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         break;
     case 2:
         // check file status
-        if (getuid()) {	
+        if (getuid()) {
             // not root, check a file whether protected or not
             if (rspbuf.stat & 1) {
                 printf("%s\n", "CHECK FAILED!");
@@ -157,7 +157,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
                 if (rspbuf.stat & 4) printf("%s\n", "FILE NOT UNDER YOUR PROTECTION.");
                 else printf("%s\n", "FILE UNDER YOUR PROTECTION.");
             }
-        } else {	
+        } else {
             // get file owner by root
             if (rspbuf.uid) {
                 pwd = getpwuid(rspbuf.uid);
@@ -165,7 +165,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             } else printf("%s\n", "CHECK OWNER FAILED!");
         }
         break;
-    case 4:		
+    case 4:
         // insert file
         if (rspbuf.stat & 1) {
             printf("%s\t", "INSERT FAILED:");
@@ -179,7 +179,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             printf("%s\n", "INSERT SUCCEEDED.");
         }
         break;
-    case 8:		
+    case 8:
         // delete file
         if (rspbuf.stat & 1) {
             printf("%s\t", "DELETE FAILED:");
@@ -194,7 +194,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         }
         break;
     }
-    
+
     // 关闭socket 删除文件
     close(client_sock);
     // 使用结束后需要删除
@@ -252,11 +252,11 @@ int main(int argc, char ** argv) {
         handle(option, 0);
         return 0;
     }
-	// 对于cid的情况依次处理每个文件
-	// 例如：fvault -i file1.txt file2.txt ...
+    // 对于cid的情况依次处理每个文件
+    // 例如：fvault -i file1.txt file2.txt ...
     while (optind < argc) {
         if (! stat(argv[optind++], &file_stat)) {
-			// 获得文件的inode节点号去处理
+            // 获得文件的inode节点号去处理
             inode = file_stat.st_ino;
             handle(option, inode);
         } else {
