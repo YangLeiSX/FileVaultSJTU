@@ -21,3 +21,4 @@
 3. 删除文件后数据库内保存的文件名信息出错
 4. (tested but not for sure)可执行文件加入保险箱后是否可以正常运行
 5. filename of inode have been changed by "gedit", seems like problem #3 above
+6.待续
