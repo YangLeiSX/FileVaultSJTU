@@ -16,9 +16,27 @@
 
 ## 现存问题
 
-1. (fixed by modity kernel/crypto.c)文件加解密的操作仍需完善（使用kmalloc结合copy_from_user/copy_to_user）
-2. 文件加入和移除保险箱时的加解密操作
-3. 删除文件后数据库内保存的文件名信息出错
-4. (tested but not for sure)可执行文件加入保险箱后是否可以正常运行
-5. filename of inode have been changed by "gedit", seems like problem #3 above
-6.待续
+1. - [x] 无法完成文件加解密，需要完善。
+
+   通过修改kernel/crypto.c文件已经解决，主要是修改了加密的内存操作的部分，使用kmalloc和kfree结合copy_from_user/copy_to_user函数实现。
+
+2. - [ ] 文件加入和移除保险箱时的加解密操作
+
+3. - [ ] 删除文件后数据库内保存的文件名信息出错
+   1. 例如使用gedit处理文件时，gedit会把原本的文件缓存起来，当修改完毕保存时将新的文件写入，此时会出现数据库内保存的inode节点号对应的文件改变，新的文件并没有自动加入保险箱内，导致出现错误。
+   ![gedit处理出错](gedit_error.png)
+   2. 默认情况下不允许删除保险箱内的文件，除非是sudo权限。
+
+4. - [ ] 可执行文件加入保险箱后是否可以正常运行
+   1. - [ ] 使用cat将编译后的文件读取写入：Exec Format Error
+   2. - [ ] 使用gcc编译C语言直接写入：Exec Format Error
+   3. - [x] 使用cat将python文件读取写入：成功
+
+5. 多文件的支持：
+
+   测试流程：创建新的空文件加入保险箱，使用cat将原文件读取写入
+   1. - [x] png文件：成功
+   2. - [ ] pdf文件：显示文件格式被破坏
+   3. - [ ] doc文件：打开为乱码
+
+6. 其他
