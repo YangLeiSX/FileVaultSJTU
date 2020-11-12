@@ -10,7 +10,7 @@ apt update -qq
 apt install -qq -y libsqlite3-dev libext2fs-dev
 make -C kernel/
 gcc -DSQLITE_OMIT_LOAD_EXTENSION user/fvaultd.c -lsqlite3 -lext2fs -o bin/fvaultd
-gcc user/fvault.c -o bin/fvault
+gcc -g user/fvault.c -lext2fs -o bin/fvault
 
 echo "Insert kernel module..."
 if [ $(lsmod | grep fvault | wc -w) -ne 0 ]

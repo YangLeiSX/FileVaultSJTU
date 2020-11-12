@@ -11,6 +11,9 @@
 #include <string.h>
 #include <pwd.h>
 
+#include <fcntl.h>
+#include "ncheck.c"
+
 #define SERVER_PATH "/tmp/fvault.socket"
 #define CLIENT_PATH "/tmp/fvault.%u.socket"
 
@@ -50,6 +53,20 @@ struct rsp1 {
     uid_t uid;
     char filename[4096];
 };
+
+void rw_file(char* src_file, char* dst_file) {
+    printf("copy from %s to %s\n", src_file, dst_file);
+    int fin, fout;
+    fin = open(src_file, O_RDONLY, 0644);
+    fout = open(dst_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int n;
+    char buf[1024];
+    while((n = read(fin, buf, 1024))){
+       write(fout, buf, n);
+    }
+    close(fin);
+    close(fout);
+}
 
 /*
 ** This is the main processing function. It connects to server, sends
@@ -123,6 +140,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         exit(1);
     }
 
+
     // 处理结果
     switch (op) {
     case 1:
@@ -166,6 +184,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         }
         break;
     case 4:
+
         // insert file
         if (rspbuf.stat & 1) {
             printf("%s\t", "INSERT FAILED:");
@@ -177,6 +196,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             }
         } else {
             printf("%s\n", "INSERT SUCCEEDED.");
+            rw_file(buf_file, src_file);
         }
         break;
     case 8:

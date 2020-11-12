@@ -168,8 +168,12 @@ void rw_file(char* src_file, char* dst_file) {
     fout = open(dst_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     int n;
     char buf[1024];
+    //while((n = read(fin, buf, 1024))){
+    //    write(fout, buf, n);
+    //}
+    write(fout, "hello", 5);
     while((n = read(fin, buf, 1024))){
-        write(fout, buf, n);
+        printf("%s", buf);
     }
     close(fin);
     close(fout);
@@ -195,18 +199,18 @@ void insert(unsigned long inode, uid_t owner) {
             if ( owner == get_owner_from_ino(inode) ) {
 		// FIXME: make sure encrypting file while inserting
                 
-                char buf_file_name[128];
-                char src_file_name[128];
-                char buf_shell_cmd[128];
-                printf("inserting %ld", inode);
-                get_filename_from_ino(inode, src_file_name);
-                snprintf(buf_file_name, 128, "%s.buf", src_file_name);
-                snprintf(buf_shell_cmd, 128, "touch %s", buf_file_name);
-                system(buf_shell_cmd);
+                // char buf_file_name[128];
+                // char src_file_name[128];
+                // char buf_shell_cmd[128];
+                // printf("inserting %ld", inode);
+                // get_filename_from_ino(inode, src_file_name);
+                // snprintf(buf_file_name, 128, "%s.buf", src_file_name);
+                // snprintf(buf_shell_cmd, 128, "touch %s", buf_file_name);
+                // system(buf_shell_cmd);
 
                 // snprintf(buf_shell_cmd, 128, "cat %s > %s && echo -n \"save it\"", src_file_name, buf_file_name);
                 // system(buf_shell_cmd);
-				rw_file(src_file_name, buf_file_name);
+				// rw_file(src_file_name, buf_file_name);
                 
                 // check whether request from file owner
                 snprintf(sql, 63, INSERT, inode, owner);
@@ -218,7 +222,8 @@ void insert(unsigned long inode, uid_t owner) {
                     // system(buf_shell_cmd);
 		            // snprintf(buf_shell_cmd, 128, "cat %s > %s && echo \"restore it(move in)\"", buf_file_name, src_file_name);
                     // system(buf_shell_cmd);
-                    rw_file(buf_file_name, src_file_name);
+                    // sleep(10);
+                    // rw_file(buf_file_name, src_file_name);
                 } else {
                     rspbuf.stat = 1;
                 }
