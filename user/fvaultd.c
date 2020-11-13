@@ -161,24 +161,6 @@ void select_get_fileowner_or_check(unsigned long inode, uid_t owner) {
     send(client_sock, & rspbuf, rsp_len, 0);
 }
 
-void rw_file(char* src_file, char* dst_file) {
-    printf("copy from %s to %s\n", src_file, dst_file);
-    int fin, fout;
-    fin = open(src_file, O_RDONLY, 0644);
-    fout = open(dst_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    int n;
-    char buf[1024];
-    //while((n = read(fin, buf, 1024))){
-    //    write(fout, buf, n);
-    //}
-    write(fout, "hello", 5);
-    while((n = read(fin, buf, 1024))){
-        printf("%s", buf);
-    }
-    close(fin);
-    close(fout);
-}
-
 void insert(unsigned long inode, uid_t owner) {
     uid_t result = 0;
 
@@ -190,44 +172,15 @@ void insert(unsigned long inode, uid_t owner) {
         // 返回 1 表示已经存在数据库中
         rspbuf.stat = 3;
     } else {
-        // TODO: 这里的逻辑是不是不对，Root用户发起请求没有insert？
-        // 是不是要像delete那边一样改改
         if (! owner) {
             // for root always succeed
             rspbuf.stat = 0;
         } else {
             if ( owner == get_owner_from_ino(inode) ) {
-		// FIXME: make sure encrypting file while inserting
-                
-                // char buf_file_name[128];
-                // char src_file_name[128];
-                // char buf_shell_cmd[128];
-                // printf("inserting %ld", inode);
-                // get_filename_from_ino(inode, src_file_name);
-                // snprintf(buf_file_name, 128, "%s.buf", src_file_name);
-                // snprintf(buf_shell_cmd, 128, "touch %s", buf_file_name);
-                // system(buf_shell_cmd);
-
-                // snprintf(buf_shell_cmd, 128, "cat %s > %s && echo -n \"save it\"", src_file_name, buf_file_name);
-                // system(buf_shell_cmd);
-				// rw_file(src_file_name, buf_file_name);
-                
                 // check whether request from file owner
                 snprintf(sql, 63, INSERT, inode, owner);
                 rc = sqlite3_exec(db, sql, NULL, 0, NULL);
-                if(rc == SQLITE_OK) {
-                    rspbuf.stat = 0;
-                    //get_filename_from_ino(inode, src_file_name);
-                    // snprintf(buf_shell_cmd, 128, "touch %s", src_file_name);
-                    // system(buf_shell_cmd);
-		            // snprintf(buf_shell_cmd, 128, "cat %s > %s && echo \"restore it(move in)\"", buf_file_name, src_file_name);
-                    // system(buf_shell_cmd);
-                    // sleep(10);
-                    // rw_file(buf_file_name, src_file_name);
-                } else {
-                    rspbuf.stat = 1;
-                }
-                // rspbuf.stat = (rc == SQLITE_OK) ? 0 : 1;
+                rspbuf.stat = (rc == SQLITE_OK) ? 0 : 1;
             } else {
                 // 不是文件的属主不能操作
                 rspbuf.stat = 5;
@@ -249,7 +202,6 @@ void delete(unsigned long inode, uid_t owner) {
         rspbuf.stat = 3;
     } else {
         if (! owner || owner == result) {	
-	    // TODO: decrypt file while deleting
 			// request from root or owner
             snprintf(sql, 63, DELETE, inode);
             rc = sqlite3_exec(db, sql, NULL, 0, NULL);
