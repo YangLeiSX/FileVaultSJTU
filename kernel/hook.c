@@ -1,3 +1,12 @@
+/**
+ * @file hook.c
+ * @author 杨磊 (yangleisx@sjtu.edu.cn)
+ * @brief 实现系统调用重载，内核模块的入口文件
+ * @date 2020-11-13
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
 #include "crypto.c"
 #include "netlink.c"
 #include <linux/dirent.h>
@@ -35,10 +44,7 @@ unsigned int level = 0;
 /**
  * @brief 通过文件描述符查询文件的inode号
  * 在操作中排除了字符/块设备文件的访问
- *
- * 原作者注释：
- * Note we intensionally exclude character device file and block device file from
- * further privilege check, so the safe won't degrade system performance.
+ * 
  * @param fd 文件描述符
  * @return unsigned long 文件inode号码
  */
@@ -90,16 +96,7 @@ static unsigned long get_ino_from_name(int dfd, const char* filename) {
  * 返回2：表示文件没有被保护，或者用户有root权限
  * 返回1：表示文件受到保护，当前用户不是文件主
  * 返回0：表示文件受到保护，当前用户为文件主
- *
- * 原作者注释：
- * Check privilege for hooked read, write, execve, getdents64 syscall.
- * Privilege 2 indicates file is not in safe, or the request is from root,
- * in which case original syscall will be executed;
- * Privilege 1 indicates file is in safe, and the request is from owner,
- * in which case original syscall along with patch (excrypt, decrypt...) will be executed;
- * Privilege 0 indicates file is in safe, and the request is not from owner,
- * in which case syscall will be refused to execute.
- * Note the first 10 reserved inodes are excluded from privilege check.
+ * 
  * @param ino 文件的inode号码
  * @param uid 执行操作的用户uid
  * @return unsigned char 权限状态
@@ -124,18 +121,10 @@ static unsigned char check_privilege(unsigned long ino, uid_t uid) {
  * 对于重命名和删除等情况，认为加入文件保险箱的文件不能被其他用户重命名或者删除
  * 返回1：文件没有被保护
  * 返回0：文件受到保护，不能被重命名和删除
- *
- * 原作者注释：
- * Check protection for hooked unlink, unlinkat syscall.
- * Privilege 1 indicates file is not in safe, in which case original syscall will be executed;
- * Privilege 0 indicates file is in safe, in which case syscall will be refused to execute.
- * Note the first 10 reserved inodes are excluded from protection check.
+ * 
  * @param ino
  * @return unsigned char
  */
-// TODO：这也导致了使用VIM编辑时出现问题，
-// VIM编辑时首先将原文件保存为～后缀的备份文件，当执行:w时将新文件保存，备份文件删除
-// 但是备份文件的inode位于文件保险箱中无法被删除，新文件的inode没有被保护
 static unsigned char check_protection(unsigned long ino) {
     uid_t owner = 0;
 
@@ -174,25 +163,16 @@ static loff_t get_pos_from_fd(unsigned int fd, unsigned char op) {
 }
 
 /*
-** The following functions are hooked syscalls, which check file privilege or
-** protection for specific user, and execute corresponding operation.
-**
-** Note Linux follows System V AMD64 ABI calling convention, so:
-** rdi				|rsi				|rdx				|r10
-** first parameter	|second parameter	|third parameter	|fourth parameter
-*/
-
-/*
-** ssize_t read(unsigned int fd, char * buf, size_t count);
-*/
+ * 在Linux 4.18.0-25内核中，系统调用时使用寄存器传递参数的顺序依次为
+ * rdi  | rsi   | rdx   | r10
+ * 1st  | 2nd   | 3rd   | 4th 
+ */
 
 /**
  * @brief 对于系统调用sys_read的重载
  * Linux 4.18.0
  * asmlinkage long sys_read(unsigned int fd, char __user *buf, size_t count);
- *
- * 原作者注释：
- * ssize_t read(unsigned int fd, char * buf, size_t count);
+ * 
  * @param regs 保存各个参数指针的寄存器值
  * @return ssize_t
  */
@@ -229,9 +209,7 @@ asmlinkage ssize_t hooked_read(struct pt_regs* regs) {
  * @brief 对于系统调用sys_write的重载
  * Linux 4.18.0
  * asmlinkage long sys_write(unsigned int fd, const char __user *buf, size_t count);
- *
- * 原作者注释：
- * ssize_t write(unsigned int fd, const char * buf, size_t count);
+ * 
  * @param regs
  * @return ssize_t
  */
@@ -270,12 +248,9 @@ asmlinkage ssize_t hooked_write(struct pt_regs* regs) {
  *		const char __user *const __user *argv,
  *		const char __user *const __user *envp);
  *
- * 原作者注释
- * ssize_t execve(const char * filename, const char * const argv[], const char * const envp[]);
  * @param regs
  * @return ssize_t
  */
-// TODO: 需要完善，没有实际测试能否正常运行
 asmlinkage ssize_t hooked_execve(struct pt_regs* regs) {
     unsigned long ino;
     uid_t uid;
@@ -305,8 +280,7 @@ asmlinkage ssize_t hooked_execve(struct pt_regs* regs) {
  * Linux 4.18.0
  * asmlinkage long sys_rename(const char __user *oldname,
  *				const char __user *newname);
- * 原作者注释:
- * ssize_t rename(const char * oldname, const char * newname);
+ * 
  * @param regs
  * @return ssize_t
  */
@@ -332,9 +306,7 @@ asmlinkage ssize_t hooked_rename(struct pt_regs* regs) {
  * @brief 对于系统调用sys_unlink的重载
  * Linux 4.18.0
  * asmlinkage long sys_unlink(const char __user *pathname);
- *
- * 原作者注释：
- * ssize_t unlink(const char * pathname);
+ * 
  * @param regs
  * @return ssize_t
  */
@@ -355,9 +327,7 @@ asmlinkage ssize_t hooked_unlink(struct pt_regs* regs) {
  * @brief 对于系统调用sys_unlinkat的重载
  * Linux 4.18.0
  * asmlinkage long sys_unlinkat(int dfd, const char __user * pathname, int flag);
- *
- * 原作者注释：
- * ssize_t unlinkat(int dfd, const char * pathname, int flag);
+ * 
  * @param regs
  * @return ssize_t
  */
@@ -380,9 +350,7 @@ asmlinkage ssize_t hooked_unlinkat(struct pt_regs* regs) {
  * asmlinkage long sys_getdents64(unsigned int fd,
  *				struct linux_dirent64 __user *dirent,
  *				unsigned int count);
- *
- * 原作者注释：
- * ssize_t getdents64(unsigned int fd, struct linux_dirent64 * dirent, unsigned int count);
+ * 
  * @param regs
  * @return ssize_t
  */
@@ -437,9 +405,7 @@ asmlinkage ssize_t hooked_getdents64(struct pt_regs* regs) {
  * Linux 4.18.0
  * asmlinkage long sys_openat(int dfd, const char __user *filename, int flags,
  *			   umode_t mode);
- *
- * 原作者注释：
- * ssize_t openat(int dfd, const char * filename, int flags, int mode);
+ * 
  * @param regs
  * @return ssize_t
  */

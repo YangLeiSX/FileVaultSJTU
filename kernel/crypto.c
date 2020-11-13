@@ -1,3 +1,12 @@
+/**
+ * @file crypto.c
+ * @author 杨磊 (yangleisx@sjtu.edu.cn)
+ * @brief 实现内核态加密和散列操作
+ * @date 2020-11-13
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
 #include <crypto/hash.h>
 #include <crypto/skcipher.h>
 #include <linux/cred.h>
@@ -55,9 +64,6 @@ static void generate_iv(char* iv, unsigned long inode, loff_t offset) {
  * 具体的加解密过程为使用密钥对自增算子加密，之后与明文异或得到密文。
  * 密钥使用用户的uid生成，初始化向量iv使用文件的inode和读写位置生成
  *
- * 原作者注释：
- * For the purpose of read/write random access, we choose AES CTR mode to transform plain/cipher.
- * The key is generated from owner uid, the iv is generated from file inode and read/write position.
  * @param ubuf 读写缓冲区的首地址，位于用户空间
  * @param inode 文件的inode节点
  * @param offset 读写文件的位置/偏移量
@@ -75,7 +81,7 @@ static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t cou
     // 因此需要额外处理，将上一分段读取出来
     short pre_len = offset & 0xf;
     char prefix[15] = { 0 };
-    //
+    // 创建内核态的缓冲区并复制数据
     char* buf;
     buf = (char*)kmalloc(count + pre_len, GFP_KERNEL);
     copy_from_user(buf + pre_len, (void *)ubuf, count);
@@ -109,7 +115,7 @@ static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t cou
     memcpy(prefix, buf, pre_len);
     crypto_skcipher_encrypt(req);
     memcpy(buf, prefix, pre_len);
-
+    // 将数据移到用户态，释放内核态空间
     copy_to_user((void *)ubuf, buf + pre_len, count);
     kfree(buf);
     // 清空本次处理的内存，释放空间

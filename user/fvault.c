@@ -1,7 +1,12 @@
-/*
-** This is the CUI program for fvault clients.
-*/
-
+/**
+ * @file fvault.c
+ * @author 杨磊 (yangleisx@sjtu,edu.cn)
+ * @brief 文件保险箱的CLI客户端
+ * @date 2020-11-13
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -10,51 +15,59 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <pwd.h>
-
 #include <fcntl.h>
 
+// Unix Domain Socket通信使用的socket文件路径
 #define SERVER_PATH "/tmp/fvault.socket"
 #define CLIENT_PATH "/tmp/fvault.%u.socket"
 
-/*
-** request to server
-** op	|ino|operation
-** 1	|0	|list all files owned by specific user; for root this means all files
-** 2	|	|check if file is protected by specific user; for root this gets file owner
-** 4	|	|insert file into protection area
-** 8	|	|delete file from protection area
-*/
+/**
+ * @brief 向服务器发送的请求结构
+ * op | 操作
+ * 1  | 列出文件箱内的文件
+ * 2  | 检查指定的文件是否在文件箱内
+ * 4  | 将指定的文件加入文件箱
+ * 8  | 将指定的文件从文件箱内删除
+ */
 struct req {
     unsigned char op;
     unsigned long ino;
 };
 
-/*
-** response from server for op != 1
-** There are 3 flag bits in stat
-** 4			|2				|1
-** owner error	|existence error|operation error
-** For example,
-** op = 4, the existence bit means file to insert is already in database;
-** op = 8, the existence bit means file to delete is not in database, etc.
-** uid is only activated when root requesting op = 2
-*/
+/**
+ * @brief 服务器回复的数据结构
+ * stat | 含义
+ * 4    | 文件主与当前用户不匹配
+ * 2    | 文件已经位于文件箱(insert)或者不在文件箱内(delete)
+ * 1    | 数据库操作错误
+ * 0    | 一切正常
+ * 仅当root用户发送check请求时，会返回文件所属用户的uid
+ */
 union rsp {
     unsigned char stat;
     uid_t uid;
 };
 
-/*
-** response to client for op == 1
-** This responses with owner uid and file pathname
-*/
+/**
+ * @brief 当发送list请求时回复的数据结构
+ * 
+ */
 struct rsp1 {
     uid_t uid;
     char filename[4096];
 };
 
+// 加入或者移出文件时的文件路径和缓存路径
 char src_file[4092];
 char buf_file[4096];
+
+/**
+ * @brief 复制文件内容
+ * 在加入或者删除文件的时候读写复制文件内容
+ * 
+ * @param src_file 原文件的文件名
+ * @param dst_file 目标文件的文件名
+ */
 void rw_file(char* src_file, char* dst_file) {
     int fin, fout;
     fin = open(src_file, O_RDONLY, 0644);
@@ -68,14 +81,14 @@ void rw_file(char* src_file, char* dst_file) {
     close(fout);
 }
 
-/*
-** This is the main processing function. It connects to server, sends
-** request, and gets result. The are four different requests: get
-** file list; check whether a file is protected or get its owner; insert a
-** file into protection area; and delete a file from protection. According to
-** user's identity, root user and not-root user can get different results.
-*/
-void handle(unsigned char op, unsigned long ino) {	//main process
+/**
+ * @brief 客户端的主要处理函数
+ * 与服务器建立连接，发送请求并获得服务器的返回数据
+ * 
+ * @param op 操作类型
+ * @param ino 文件的inode节点号
+ */
+void handle(unsigned char op, unsigned long ino) {
     int client_sock, rc, sockaddr_len;
     // 这里使用的是sockaddr_un表示Unix域套接字地址
     // 通常在internet传输中使用sockaddr_in表示互联网域地址
@@ -144,18 +157,17 @@ void handle(unsigned char op, unsigned long ino) {	//main process
     // 处理结果
     switch (op) {
     case 1:
-        //get file list
+        // 对于list操作
         printf("%s\n", "FILE LIST:");
         if (getuid()) {
-            // not root, get specific user's file
-            // 如何传递uid信息呢？（破案了，使用getsockopt函数）
+            // 非管理员用户可以查看自己所属的文件
+            // 在服务器端使用getsockopt函数获得用户ID信息
             printf("%s\n", "filename");
             while (rc > 0) {
                 printf("%s\n",rsp1buf.filename);
                 rc = recv(client_sock, & rsp1buf, sizeof(struct rsp1), 0);
             }
         } else {
-            // root, get all users' file
             // 管理员用户可以查看所有的文件信息
             printf("%s\t%s\n", "owner", "filename");
             while (rc > 0) {
@@ -166,9 +178,9 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         }
         break;
     case 2:
-        // check file status
+        // 对于check操作
         if (getuid()) {
-            // not root, check a file whether protected or not
+            // 非管理员用户
             if (rspbuf.stat & 1) {
                 printf("%s\n", "CHECK FAILED!");
             } else {
@@ -176,7 +188,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
                 else printf("%s\n", "FILE UNDER YOUR PROTECTION.");
             }
         } else {
-            // get file owner by root
+            // 管理员用户可以检查文件的属主
             if (rspbuf.uid) {
                 pwd = getpwuid(rspbuf.uid);
                 printf("owner: %u\tusername: %s\n", rspbuf.uid, pwd->pw_name);
@@ -184,7 +196,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         }
         break;
     case 4:
-        // insert file
+        // 对于插入操作
         if (rspbuf.stat & 1) {
             printf("%s\t", "INSERT FAILED:");
             if (rspbuf.stat & 2) {
@@ -195,14 +207,14 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             }
         } else {
             printf("%s\n", "INSERT SUCCEEDED.");
-            // insert crypto
+            // 将原文加密写入
             rw_file(buf_file, src_file);
-            // unlink(buf_file);
         }
+        // 删除缓存文件
         unlink(buf_file);
         break;
     case 8:
-        // delete file
+        // 对于删除操作
         if (rspbuf.stat & 1) {
             printf("%s\t", "DELETE FAILED:");
             if (rspbuf.stat & 2) {
@@ -213,10 +225,10 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             }
         } else {
             printf("%s\n", "DELETE SUCCEEDED.");
-            // delete crypto
+            // 将密文解密
             rw_file(buf_file, src_file);
-            unlink(buf_file);
         }
+        // 删除缓存文件
         unlink(buf_file);
         break;
     }
@@ -227,6 +239,10 @@ void handle(unsigned char op, unsigned long ino) {	//main process
     unlink(client_sockaddr.sun_path);
 }
 
+/**
+ * @brief 显示CLI客户端的命令行参数和用法
+ * 
+ */
 void usage(void) {
     printf("%s\n", "Usage: fvault [OPTION]... [FILE]...\n\n"
            "  -l (list)	list all files under protection\n"
@@ -236,9 +252,13 @@ void usage(void) {
            "  -d (delete)	delete given file from protection area\n");
 }
 
-/*
-** This is the main function that checks input parameters.
-*/
+/**
+ * @brief 主函数，程序入口
+ * 
+ * @param argc 命令行参数数量
+ * @param argv 命令行参数的首地址数组
+ * @return int 
+ */
 int main(int argc, char ** argv) {
     int ch;
     unsigned char option = 0;
@@ -281,13 +301,14 @@ int main(int argc, char ** argv) {
     // 对于cid的情况依次处理每个文件
     // 例如：fvault -i file1.txt file2.txt ...
     while (optind < argc) {
-        // get file name 
+        // 获得所处理的文件名，生成缓冲文件名
         memset(src_file, 0, 4096);
         memset(buf_file, 0, 4096);
         memcpy(src_file, argv[optind], strlen(argv[optind]));
         snprintf(buf_file, 4096, "%s.buf", src_file);
+        // 检查文件状态并处理
         if (! stat(argv[optind++], &file_stat)) {
-            // store buffer file
+            // 将原文件复制保存在缓冲文件中
             if (option == 4 || option == 8) {
                 rw_file(src_file, buf_file);
             }
