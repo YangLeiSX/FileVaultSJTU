@@ -12,7 +12,6 @@
 #include <pwd.h>
 
 #include <fcntl.h>
-#include "ncheck.c"
 
 #define SERVER_PATH "/tmp/fvault.socket"
 #define CLIENT_PATH "/tmp/fvault.%u.socket"
@@ -54,8 +53,9 @@ struct rsp1 {
     char filename[4096];
 };
 
+char src_file[4096];
+char buf_file[4096];
 void rw_file(char* src_file, char* dst_file) {
-    printf("copy from %s to %s\n", src_file, dst_file);
     int fin, fout;
     fin = open(src_file, O_RDONLY, 0644);
     fout = open(dst_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -184,7 +184,6 @@ void handle(unsigned char op, unsigned long ino) {	//main process
         }
         break;
     case 4:
-
         // insert file
         if (rspbuf.stat & 1) {
             printf("%s\t", "INSERT FAILED:");
@@ -196,7 +195,9 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             }
         } else {
             printf("%s\n", "INSERT SUCCEEDED.");
+            // insert crypto
             rw_file(buf_file, src_file);
+            unlink(buf_file);
         }
         break;
     case 8:
@@ -211,6 +212,9 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             }
         } else {
             printf("%s\n", "DELETE SUCCEEDED.");
+            // delete crypto
+            rw_file(buf_file, src_file);
+            unlink(buf_file);
         }
         break;
     }
@@ -275,7 +279,16 @@ int main(int argc, char ** argv) {
     // 对于cid的情况依次处理每个文件
     // 例如：fvault -i file1.txt file2.txt ...
     while (optind < argc) {
+        // get file name 
+        memset(src_file, 0, 4096);
+        memset(buf_file, 0, 4096);
+        memcpy(src_file, argv[optind], strlen(argv[optind]));
+        snprintf(buf_file, 4096, "%s.buf", src_file);
         if (! stat(argv[optind++], &file_stat)) {
+            // store buffer file
+            if (option == 4 || option == 8) {
+                rw_file(src_file, buf_file);
+            }
             // 获得文件的inode节点号去处理
             inode = file_stat.st_ino;
             handle(option, inode);
