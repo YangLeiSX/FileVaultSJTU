@@ -64,7 +64,6 @@ static void generate_iv(char* iv, unsigned long inode, loff_t offset) {
  * @param count 实际发生读写的字节数
  */
 static void transform(char* ubuf, unsigned long inode, loff_t offset, size_t count) {
-    pr_info("run once\n");
     struct crypto_skcipher* skcipher = NULL;
     struct skcipher_request* req = NULL;
     struct scatterlist sg;

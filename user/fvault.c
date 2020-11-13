@@ -53,7 +53,7 @@ struct rsp1 {
     char filename[4096];
 };
 
-char src_file[4096];
+char src_file[4092];
 char buf_file[4096];
 void rw_file(char* src_file, char* dst_file) {
     int fin, fout;
@@ -197,8 +197,8 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             printf("%s\n", "INSERT SUCCEEDED.");
             // insert crypto
             rw_file(buf_file, src_file);
-            unlink(buf_file);
         }
+        unlink(buf_file);
         break;
     case 8:
         // delete file
@@ -214,8 +214,8 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             printf("%s\n", "DELETE SUCCEEDED.");
             // delete crypto
             rw_file(buf_file, src_file);
-            unlink(buf_file);
         }
+        unlink(buf_file);
         break;
     }
 
