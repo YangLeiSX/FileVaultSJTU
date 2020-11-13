@@ -197,6 +197,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             printf("%s\n", "INSERT SUCCEEDED.");
             // insert crypto
             rw_file(buf_file, src_file);
+            // unlink(buf_file);
         }
         unlink(buf_file);
         break;
@@ -214,6 +215,7 @@ void handle(unsigned char op, unsigned long ino) {	//main process
             printf("%s\n", "DELETE SUCCEEDED.");
             // delete crypto
             rw_file(buf_file, src_file);
+            unlink(buf_file);
         }
         unlink(buf_file);
         break;
