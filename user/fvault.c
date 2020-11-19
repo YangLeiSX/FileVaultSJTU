@@ -308,13 +308,17 @@ int main(int argc, char ** argv) {
         snprintf(buf_file, 4096, "%s.buf", src_file);
         // 检查文件状态并处理
         if (! stat(argv[optind++], &file_stat)) {
-            // 将原文件复制保存在缓冲文件中
-            if (option == 4 || option == 8) {
-                rw_file(src_file, buf_file);
+            if (getuid() == file_stat.st_uid || option == 2) {
+                // 将原文件复制保存在缓冲文件中
+                if (option == 4 || option == 8) {
+                    rw_file(src_file, buf_file);
+                }
+                // 获得文件的inode节点号去处理
+                inode = file_stat.st_ino;
+                handle(option, inode);
+            } else {
+                printf("Operation not Permitted\n");
             }
-            // 获得文件的inode节点号去处理
-            inode = file_stat.st_ino;
-            handle(option, inode);
         } else {
             printf("%s: No such file or directory\n", argv[optind - 1]);
         }
