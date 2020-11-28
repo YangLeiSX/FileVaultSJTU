@@ -10,3 +10,4 @@ kernel/.tmp*
 kernel/*.order 
 kernel/*.symvers 
 *.ur-safe
+bin/*
