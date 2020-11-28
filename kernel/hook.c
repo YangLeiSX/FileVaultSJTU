@@ -285,7 +285,7 @@ asmlinkage ssize_t hooked_execve(struct pt_regs* regs) {
  * @return ssize_t
  */
 // Linux内核中的系统调用包括sys_rename, sys_renameat, sys_renameat2
-// TODO：为什么没有重载另外的几个函数而只重载了这一个
+// TODO：检查是否有必要重载另外的几个函数
 asmlinkage ssize_t hooked_rename(struct pt_regs* regs) {
     unsigned long ino;
     ssize_t ret = -1;
@@ -354,7 +354,8 @@ asmlinkage ssize_t hooked_unlinkat(struct pt_regs* regs) {
  * @param regs
  * @return ssize_t
  */
-// TODO：为什么不重载sys_getdents
+// Linux内核中的系统调用还包括sys_getdents
+// TODO：是否有必要重载sys_getdents
 asmlinkage ssize_t hooked_getdents64(struct pt_regs* regs) {
     uid_t uid;
     ssize_t ret = -1;
@@ -409,7 +410,8 @@ asmlinkage ssize_t hooked_getdents64(struct pt_regs* regs) {
  * @param regs
  * @return ssize_t
  */
-// TODO：为啥不重载open
+// Linux中的系统调用包括sys_open
+// TODO：考虑是否有必要重载sys_open
 asmlinkage ssize_t hooked_openat(struct pt_regs* regs) {
     unsigned long ino;
     uid_t uid;

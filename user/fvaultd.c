@@ -242,7 +242,6 @@ void delete(unsigned long inode, uid_t owner) {
         rspbuf.stat = 3;
     } else {
         if (! owner || owner == result) {	
-            // TODO: root用户能否移出文件
 			// 管理员用户或者文件主用户
             snprintf(sql, 63, DELETE, inode);
             rc = sqlite3_exec(db, sql, NULL, 0, NULL);
@@ -253,12 +252,6 @@ void delete(unsigned long inode, uid_t owner) {
     }
     send(client_sock, & rspbuf, rsp_len, 0);
 }
-
-/*
-** This is the main processing function.
-** It will create 2 processes, one handles requests from client side,
-** the other handles communication from kernel space for control purposes.
-*/
 
 /**
  * @brief 服务器端的主程序

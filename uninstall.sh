@@ -37,4 +37,4 @@ rm /tmp/*.socket && echo "Cleared!"
 echo -n "Clean build dir..."
 make -C kernel clean && echo "Cleaned!"
 
-echo "ALL DONE"
+echo "ALL DONE."
